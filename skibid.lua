@@ -1,5 +1,5 @@
 -- Credit: Skibidi Bucu Messi
--- NYX HUB (Core GUI)
+-- NYX HUB (Core GUI + Self Tab)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -28,8 +28,8 @@ screen.DisplayOrder = 999
 screen.Parent = parent
 
 local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 400, 0, 300)
-main.Position = UDim2.new(0.5, -200, 0.5, -150)
+main.Size = UDim2.new(0, 400, 0, 320) -- Tăng chiều cao lên xíu cho 5 tab
+main.Position = UDim2.new(0.5, -200, 0.5, -160)
 main.BackgroundColor3 = THEME.bg
 main.BorderSizePixel = 0
 main.Active = true
@@ -162,8 +162,10 @@ local function createTab(name)
     return page
 end
 
+-- Tạo các Tab (Thêm Self ở dưới Collect)
 local FarmTab = createTab("Farm")
 local CollectTab = createTab("Collect")
+local SelfTab = createTab("Self")
 local TeleportTab = createTab("Teleport")
 local MiscTab = createTab("Misc")
 
@@ -232,7 +234,6 @@ local function createButton(page, text, callback)
     end)
 end
 
--- Hàm tạo Dropdown (Chọn vật phẩm)
 local function createDropdown(page, text, options, default, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -10, 0, 35)
@@ -365,6 +366,9 @@ createToggle(FarmTab, "Bring Objects", false, function(state)
     BringEnabled = state
     if state then current_idx = 1; placed_count = 0 end
 end)
+
+-- ================== CHỨC NĂNG TAB SELF ==================
+-- (Tạo sẵn khung để m thêm code vào đây)
 
 -- Nút ẩn/hiện thu nhỏ
 local closeBtn = Instance.new("TextButton")
