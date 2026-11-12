@@ -1,5 +1,5 @@
 -- Credit: Skibidi Bucu Messi
--- NYX HUB (Core GUI + Self Tab)
+-- NYX HUB (Core GUI + Self + Teleport)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -368,7 +368,6 @@ end)
 
 -- ================== TAB SELF ==================
 local isUnlocking = false
-
 createToggle(SelfTab, "Auto Unlock Rigs", false, function(state)
     if state then
         if isUnlocking then return end
@@ -386,12 +385,10 @@ createToggle(SelfTab, "Auto Unlock Rigs", false, function(state)
                 CFrame.new(-672, 172, -1424)
             }
 
-            -- 1. Lần lượt TP và kích hoạt prompt
             for i, pos in ipairs(positions) do
                 root.CFrame = pos
-                task.wait(0.5) -- Đợi 0.5s cho server sync vị trí
+                task.wait(0.5) 
                 
-                -- Quét ProximityPrompt trong bán kính 20 studs quanh vị trí đó
                 for _, obj in ipairs(workspace:GetDescendants()) do
                     if obj:IsA("ProximityPrompt") and obj.Enabled then
                         local part = obj.Parent
@@ -404,18 +401,22 @@ createToggle(SelfTab, "Auto Unlock Rigs", false, function(state)
                         end
                     end
                 end
-                
-                task.wait(2) -- Đợi 2 giây như mày yêu cầu
+                task.wait(2) 
             end
 
-            -- 2. TP về vị trí ban đầu
             task.wait(1)
             root.CFrame = CFrame.new(249, 153, -259)
             isUnlocking = false
-            
-            -- Tự động tắt Toggle trên GUI
-            -- (Vì không có tham chiếu trực tiếp nên t không tự gạt công tắc được, mày tự gạt lại nhé)
         end)
+    end
+end)
+
+-- ================== TAB TELEPORT ==================
+createButton(TeleportTab, "Ghost Galleon", function()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then
+        root.CFrame = CFrame.new(4130, 359, -2165)
     end
 end)
 
