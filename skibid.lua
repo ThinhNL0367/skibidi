@@ -21,6 +21,15 @@ local THEME = {
     danger = Color3.fromRGB(220, 50, 50)
 }
 
+-- Biến lưu trạng thái các Toggle
+local TOGGLES = {
+    BringEnabled = false,
+    AutoUnlock = false,
+    InfAmmo = false,
+    FireRate = false,
+    InfHeal = false
+}
+
 local screen = Instance.new("ScreenGui")
 screen.Name = "SkibidiHubGui"
 screen.ResetOnSpawn = false
@@ -301,7 +310,6 @@ local function createDropdown(page, text, options, default, callback)
 end
 
 -- ================== TAB FARM ==================
-local BringEnabled = false
 local BringMode = "Pallet"
 
 local function getTargets(mode)
@@ -322,7 +330,7 @@ end
 
 local placed_count, current_idx = 0, 1
 RunService.Heartbeat:Connect(function()
-    if not BringEnabled then return end
+    if not TOGGLES.BringEnabled then return end
     local targets = getTargets(BringMode)
     if #targets == 0 then return end
     local char = LP.Character
@@ -362,11 +370,12 @@ createDropdown(FarmTab, "Select Object", {"Pallet", "Scrap"}, "Pallet", function
 end)
 
 createToggle(FarmTab, "Bring Objects", false, function(state)
-    BringEnabled = state
+    TOGGLES.BringEnabled = state
     if state then current_idx = 1; placed_count = 0 end
 end)
 
 -- ================== TAB SELF ==================
+-- 1. Auto Unlock Rigs
 local isUnlocking = false
 createToggle(SelfTab, "Auto Unlock Rigs", false, function(state)
     if state then
@@ -409,6 +418,83 @@ createToggle(SelfTab, "Auto Unlock Rigs", false, function(state)
             isUnlocking = false
         end)
     end
+end)
+
+-- 2. Inf Ammo
+task.spawn(function()
+    while task.wait(0.5) do
+        if TOGGLES.InfAmmo then
+            pcall(function()
+                LP:SetAttribute("RifleAmmo", 9999)
+                LP:SetAttribute("ShotgunAmmo", 9999)
+                LP:SetAttribute("SniperAmmo", 9999)
+                LP:SetAttribute("PistolAmmo", 9999)
+                LP:SetAttribute("Ammo", 9999)
+            end)
+        end
+    end
+end)
+createToggle(SelfTab, "Inf Ammo", false, function(state)
+    TOGGLES.InfAmmo = state
+end)
+
+-- 3. Fire Rate
+task.spawn(function()
+    task.wait(1)
+    local success, GlobalAPI = pcall(function() return require(game.ReplicatedStorage.GlobalAPI) end)
+    if success and GlobalAPI and GlobalAPI.RealWait then
+        local oldRealWait = GlobalAPI.RealWait
+        GlobalAPI.RealWait = newcclosure(function(t)
+            if not TOGGLES.FireRate then return oldRealWait(t) end
+            if t > 1 then return oldRealWait(0.05) end
+            if t >= 0.2 and t <= 0.3 then return oldRealWait(0) end
+            if t == 0.12 then return oldRealWait(0.05) end
+            return oldRealWait(t)
+        end)
+    end
+end)
+createToggle(SelfTab, "Fire Rate", false, function(state)
+    TOGGLES.FireRate = state
+end)
+
+-- 4. Inf Heal
+task.spawn(function()
+    local mt = getrawmetatable(game)
+    local old_namecall = mt.__namecall
+    setreadonly(mt, false)
+    mt.__namecall = newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        if method == "Activate" and self:IsA("Tool") and (self.Name == "Bandage" or self.Name == "Medkit") then
+            return nil 
+        end
+        return old_namecall(self, ...)
+    end)
+    setreadonly(mt, true)
+end)
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if TOGGLES.InfHeal then
+            local char = LP.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 and hum.Health < hum.MaxHealth then
+                local backpack = LP:FindFirstChild("Backpack")
+                local bandage = char:FindFirstChild("Bandage") or (backpack and backpack:FindFirstChild("Bandage"))
+                local medkit = char:FindFirstChild("Medkit") or (backpack and backpack:FindFirstChild("Medkit"))
+                
+                if bandage then
+                    pcall(function() bandage:Activate() end)
+                    if _G.ToolProcessor then pcall(function() _G.ToolProcessor("Bandage", "Heal") end) end
+                elseif medkit then
+                    pcall(function() medkit:Activate() end)
+                    if _G.ToolProcessor then pcall(function() _G.ToolProcessor("Medkit", "Heal", char) end) end
+                end
+            end
+        end
+    end
+end)
+createToggle(SelfTab, "Inf Heal", false, function(state)
+    TOGGLES.InfHeal = state
 end)
 
 -- ================== TAB TELEPORT ==================
