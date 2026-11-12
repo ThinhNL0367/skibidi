@@ -21,10 +21,8 @@ local THEME = {
     danger = Color3.fromRGB(220, 50, 50)
 }
 
--- Biến lưu trạng thái các Toggle
 local TOGGLES = {
     BringEnabled = false,
-    AutoUnlock = false,
     InfAmmo = false,
     FireRate = false,
     InfHeal = false
@@ -420,15 +418,14 @@ createToggle(SelfTab, "Auto Unlock Rigs", false, function(state)
     end
 end)
 
--- 2. Inf Ammo
+-- 2. Inf Ammo (Bơm đạn cho mọi loại súng)
 task.spawn(function()
     while task.wait(0.5) do
         if TOGGLES.InfAmmo then
             pcall(function()
+                LP:SetAttribute("SniperAmmo", 9999)
                 LP:SetAttribute("RifleAmmo", 9999)
                 LP:SetAttribute("ShotgunAmmo", 9999)
-                LP:SetAttribute("SniperAmmo", 9999)
-                LP:SetAttribute("PistolAmmo", 9999)
                 LP:SetAttribute("Ammo", 9999)
             end)
         end
@@ -438,7 +435,7 @@ createToggle(SelfTab, "Inf Ammo", false, function(state)
     TOGGLES.InfAmmo = state
 end)
 
--- 3. Fire Rate
+-- 3. Fire Rate (Bắn siêu nhanh + Nạp tức thì cho Sniper, Rifle, Flintlock)
 task.spawn(function()
     task.wait(1)
     local success, GlobalAPI = pcall(function() return require(game.ReplicatedStorage.GlobalAPI) end)
@@ -446,9 +443,17 @@ task.spawn(function()
         local oldRealWait = GlobalAPI.RealWait
         GlobalAPI.RealWait = newcclosure(function(t)
             if not TOGGLES.FireRate then return oldRealWait(t) end
-            if t > 1 then return oldRealWait(0.05) end
-            if t >= 0.2 and t <= 0.3 then return oldRealWait(0) end
-            if t == 0.12 then return oldRealWait(0.05) end
+            
+            -- 1. Thời gian nạp đạn (0.2s -> 2s) -> Nạp tức thì (0s)
+            if t >= 0.2 and t <= 2 then 
+                return oldRealWait(0) 
+            end
+            
+            -- 2. Thời gian hồi chiêu sau khi bắn
+            if t > 1 then return oldRealWait(0.05) end -- Sniper
+            if t == 0.12 then return oldRealWait(0.02) end -- Rifle
+            if t == 0.2 then return oldRealWait(0.02) end -- Flintlock
+            
             return oldRealWait(t)
         end)
     end
