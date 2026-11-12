@@ -28,7 +28,7 @@ screen.DisplayOrder = 999
 screen.Parent = parent
 
 local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 400, 0, 320) -- Tăng chiều cao lên xíu cho 5 tab
+main.Size = UDim2.new(0, 400, 0, 320)
 main.Position = UDim2.new(0.5, -200, 0.5, -160)
 main.BackgroundColor3 = THEME.bg
 main.BorderSizePixel = 0
@@ -162,7 +162,6 @@ local function createTab(name)
     return page
 end
 
--- Tạo các Tab (Thêm Self ở dưới Collect)
 local FarmTab = createTab("Farm")
 local CollectTab = createTab("Collect")
 local SelfTab = createTab("Self")
@@ -301,7 +300,7 @@ local function createDropdown(page, text, options, default, callback)
     end)
 end
 
--- ================== CHỨC NĂNG TAB FARM ==================
+-- ================== TAB FARM ==================
 local BringEnabled = false
 local BringMode = "Pallet"
 
@@ -367,8 +366,58 @@ createToggle(FarmTab, "Bring Objects", false, function(state)
     if state then current_idx = 1; placed_count = 0 end
 end)
 
--- ================== CHỨC NĂNG TAB SELF ==================
--- (Tạo sẵn khung để m thêm code vào đây)
+-- ================== TAB SELF ==================
+local isUnlocking = false
+
+createToggle(SelfTab, "Auto Unlock Rigs", false, function(state)
+    if state then
+        if isUnlocking then return end
+        isUnlocking = true
+        
+        task.spawn(function()
+            local char = LP.Character
+            if not char then isUnlocking = false; return end
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if not root then isUnlocking = false; return end
+
+            local positions = {
+                CFrame.new(-614, 172, 744),
+                CFrame.new(1746, 172, -553),
+                CFrame.new(-672, 172, -1424)
+            }
+
+            -- 1. Lần lượt TP và kích hoạt prompt
+            for i, pos in ipairs(positions) do
+                root.CFrame = pos
+                task.wait(0.5) -- Đợi 0.5s cho server sync vị trí
+                
+                -- Quét ProximityPrompt trong bán kính 20 studs quanh vị trí đó
+                for _, obj in ipairs(workspace:GetDescendants()) do
+                    if obj:IsA("ProximityPrompt") and obj.Enabled then
+                        local part = obj.Parent
+                        if part and part:IsA("BasePart") then
+                            local dist = (part.Position - pos.Position).Magnitude
+                            if dist <= 20 then
+                                obj.HoldDuration = 0
+                                fireproximityprompt(obj)
+                            end
+                        end
+                    end
+                end
+                
+                task.wait(2) -- Đợi 2 giây như mày yêu cầu
+            end
+
+            -- 2. TP về vị trí ban đầu
+            task.wait(1)
+            root.CFrame = CFrame.new(249, 153, -259)
+            isUnlocking = false
+            
+            -- Tự động tắt Toggle trên GUI
+            -- (Vì không có tham chiếu trực tiếp nên t không tự gạt công tắc được, mày tự gạt lại nhé)
+        end)
+    end
+end)
 
 -- Nút ẩn/hiện thu nhỏ
 local closeBtn = Instance.new("TextButton")
