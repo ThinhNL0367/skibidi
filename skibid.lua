@@ -1,5 +1,5 @@
 -- Credit: Skibidi Bucu Messi
--- NYX HUB (Core GUI + Self + Teleport + Kill Aura)
+-- NYX HUB (Core GUI + Full Features)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -26,15 +26,48 @@ local TOGGLES = {
     InfAmmo = false,
     FireRate = false,
     InfHeal = false,
-    KillAura = false
+    KillAura = false,
+    AutoStore = false
 }
 
 local CONFIG = {
-    KillAura_ID = 1037501, -- ID mặc định
+    KillAura_ID = 6627009, 
     KillAura_Range = 1000,
-    KillAura_Delay = 0.02
+    KillAura_Delay = 0.03,
+    Store_Delay = 0.1,
+    StoreMode = "Pallet",
+    BagID = 6763635
 }
 
+local StoreKeywords = {
+    Pallet = {"pallet"},
+    Scrap = {"scrap", "anchor", "engine", "carbattery", "propellor", "metalbeam"}
+}
+
+-- HÀM TỰ ĐỘNG TÌM REMOTE
+local cached_event = nil
+local function getNetworkEvent()
+    if cached_event and cached_event.Parent then return cached_event end
+    for _, service in ipairs(game:GetChildren()) do
+        local re = service:FindFirstChild("RemoteEvent")
+        if re and re:IsA("RemoteEvent") then
+            cached_event = re
+            return re
+        end
+    end
+    return nil
+end
+
+-- HÀM QUÉT BỘ NHỚ ẨN
+local function getHiddenObject(keyword)
+    if not getnilinstances then return nil end
+    for _, obj in pairs(getnilinstances()) do
+        if obj.Name:lower():find(keyword) then return obj end
+    end
+    return nil
+end
+
+-- TẠO GUI
 local screen = Instance.new("ScreenGui")
 screen.Name = "SkibidiHubGui"
 screen.ResetOnSpawn = false
@@ -57,18 +90,12 @@ stroke.Thickness = 1.5
 local dragging, dragInput, dragStart, startPos
 main.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = main.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
-        end)
+        dragging = true; dragStart = input.Position; startPos = main.Position
+        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
     end
 end)
 main.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
 end)
 UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then
@@ -342,7 +369,7 @@ local function getTargets(mode)
     local debris = workspace:FindFirstChild("DebrisField") or workspace
     local keywords = {}
     if mode == "Pallet" then keywords = {"pallet"}
-    elseif mode == "Scrap" then keywords = {"anchor", "engine", "carbattery", "propellor", "metalbeam"} end
+    elseif mode == "Scrap" then keywords = {"scrap", "anchor", "engine", "carbattery", "propellor", "metalbeam"} end
     
     for _, obj in ipairs(debris:GetDescendants()) do
         if obj:IsA("Model") or obj:IsA("BasePart") then
@@ -388,7 +415,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
-createDropdown(FarmTab, "Select Object", {"Pallet", "Scrap"}, "Pallet", function(val)
+createDropdown(FarmTab, "Bring Object", {"Pallet", "Scrap"}, "Pallet", function(val)
     BringMode = val
     current_idx = 1
     placed_count = 0
@@ -399,7 +426,55 @@ createToggle(FarmTab, "Bring Objects", false, function(state)
     if state then current_idx = 1; placed_count = 0 end
 end)
 
--- KILL AURA VÀO FARM TAB
+-- AUTO STORE
+createDropdown(FarmTab, "Store Object", {"Pallet", "Scrap"}, "Pallet", function(val)
+    CONFIG.StoreMode = val
+end)
+
+createToggle(FarmTab, "Auto Store (Vét Sạch)", false, function(state)
+    TOGGLES.AutoStore = state
+end)
+
+task.spawn(function()
+    while task.wait(CONFIG.Store_Delay) do
+        if not TOGGLES.AutoStore then continue end
+        local net_event = getNetworkEvent()
+        if not net_event then continue end
+
+        local target_obj = nil
+        local keywords = StoreKeywords[CONFIG.StoreMode]
+
+        -- 1. Tìm trên map
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if (obj:IsA("Model") or obj:IsA("BasePart")) then
+                local n = obj.Name:lower()
+                for _, k in ipairs(keywords) do
+                    if n:find(k) then
+                        target_obj = obj
+                        break
+                    end
+                end
+            end
+            if target_obj then break end
+        end
+
+        -- 2. Tìm ẩn (Dành cho Delta)
+        if not target_obj and getnilinstances then
+            for _, k in ipairs(keywords) do
+                target_obj = getHiddenObject(k)
+                if target_obj then break end
+            end
+        end
+
+        if target_obj then
+            pcall(function()
+                net_event:FireServer(CONFIG.BagID, "StoreItem", target_obj)
+            end)
+        end
+    end
+end)
+
+-- KILL AURA
 createTextBox(FarmTab, "Nhập ID Súng...", tostring(CONFIG.KillAura_ID), function(text)
     CONFIG.KillAura_ID = tonumber(text) or CONFIG.KillAura_ID
 end)
@@ -408,12 +483,11 @@ createToggle(FarmTab, "Kill Aura (Cần Sniper)", false, function(state)
     TOGGLES.KillAura = state
 end)
 
--- LOGIC KILL AURA
-local social_event = game:GetService("SocialService"):FindFirstChild("RemoteFunction")
 task.spawn(function()
     while task.wait(CONFIG.KillAura_Delay) do
         if not TOGGLES.KillAura then continue end
-        if not social_event then continue end
+        local network_event = getNetworkEvent()
+        if not network_event then continue end
         
         local char = LP.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -451,7 +525,7 @@ task.spawn(function()
             
             task.spawn(function()
                 pcall(function()
-                    social_event:InvokeServer(
+                    network_event:InvokeServer(
                         CONFIG.KillAura_ID,
                         "ToolReplicator",
                         "~sGun",
