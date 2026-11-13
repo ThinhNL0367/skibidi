@@ -1,5 +1,5 @@
 -- Credit: Skibidi Bucu Messi
--- AppleLibrary Build (Kill Aura for Animals & Mobs)
+-- AppleLibrary Build (Added Tween Around)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -24,7 +24,8 @@ local TOGGLES = {
     InfHeal = false,
     KillAura = false,
     AutoStore = false,
-    AutoDrop = false
+    AutoDrop = false,
+    TweenAround = false
 }
 
 local CONFIG = {
@@ -37,7 +38,8 @@ local CONFIG = {
     BringMode = "Pallet",
     BagID = 6763635,
     Drop_ID = 2992966,
-    Drop_Pos = Vector3.new(275, 156, -246)
+    Drop_Pos = Vector3.new(275, 156, -246),
+    Tween_Speed = 50
 }
 
 local StoreKeywords = {
@@ -251,25 +253,18 @@ task.spawn(function()
         
         for _, obj in ipairs(container:GetChildren()) do
             if obj:IsA("Model") then
-                -- Bỏ qua nếu là client clone
                 if not string.find(obj.Name, "_CLIENT") then
-                    
-                    -- Tìm root linh hoạt (HumanoidRootPart, RootPart, hoặc PrimaryPart)
                     local hrp = obj:FindFirstChild("HumanoidRootPart") 
                              or obj:FindFirstChild("RootPart") 
                              or obj.PrimaryPart
                              or obj:FindFirstChildWhichIsA("BasePart")
                     
                     if hrp then
-                        -- Kiểm tra sinh mệnh
                         local isAlive = true
-                        
-                        -- 1. Nếu có Humanoid, check máu Humanoid
                         local hum = obj:FindFirstChildOfClass("Humanoid")
                         if hum then
                             isAlive = hum.Health > 0
                         else
-                            -- 2. Nếu là động vật dùng Value, tìm biến "Health"
                             local healthVal = obj:FindFirstChild("Health") or obj:FindFirstChild("HP")
                             if healthVal and (healthVal:IsA("NumberValue") or healthVal:IsA("IntValue")) then
                                 isAlive = healthVal.Value > 0
@@ -298,6 +293,61 @@ task.spawn(function()
         end
     end
 end)
+
+-- ================== TWEEN AROUND LOGIC ==================
+local tweenAngle = 0
+local tweenRadius = 0
+local tweenCenter = nil
+local heartbeatConn = nil
+
+local function startTween()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    
+    tweenCenter = root.CFrame
+    tweenAngle = 0
+    tweenRadius = 0
+    
+    workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
+    root.Anchored = true
+    if char:FindFirstChild("Humanoid") then char.Humanoid.PlatformStand = true end
+    
+    if heartbeatConn then heartbeatConn:Disconnect() end
+    heartbeatConn = RunService.Heartbeat:Connect(function(dt)
+        if not TOGGLES.TweenAround then return end
+        
+        workspace.CurrentCamera.CFrame = CFrame.new(tweenCenter.Position + Vector3.new(0, 25, 0), tweenCenter.Position)
+        
+        if tweenRadius < 2000 then
+            tweenRadius = tweenRadius + (CONFIG.Tween_Speed * dt)
+            if tweenRadius > 2000 then tweenRadius = 2000 end
+        end
+        
+        tweenAngle = tweenAngle + (2 * dt)
+        
+        local x = tweenCenter.Position.X + math.cos(tweenAngle) * tweenRadius
+        local z = tweenCenter.Position.Z + math.sin(tweenAngle) * tweenRadius
+        local targetPos = Vector3.new(x, tweenCenter.Position.Y, z)
+        local lookDir = Vector3.new(math.cos(tweenAngle + math.pi/2), 0, math.sin(tweenAngle + math.pi/2))
+        
+        root.CFrame = CFrame.new(targetPos, targetPos + lookDir)
+    end)
+end
+
+local function stopTween()
+    if heartbeatConn then heartbeatConn:Disconnect(); heartbeatConn = nil end
+    local char = LP.Character
+    if char then
+        local root = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if root and tweenCenter then root.CFrame = tweenCenter end
+        if root then root.Anchored = false end
+        if hum then hum.PlatformStand = false end
+        workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+        workspace.CurrentCamera.CameraSubject = hum
+    end
+end
 
 -- Inf Ammo & Fire Rate
 task.spawn(function()
@@ -470,6 +520,17 @@ local selfSection = window:Section("Self")
 selfSection:Switch("Inf Ammo", false, function(val) TOGGLES.InfAmmo = val end)
 selfSection:Switch("Fire Rate", false, function(val) TOGGLES.FireRate = val end)
 selfSection:Switch("Inf Heal", false, function(val) TOGGLES.InfHeal = val end)
+
+selfSection:Divider("Tween Around")
+selfSection:TextField("Tween Speed", tostring(CONFIG.Tween_Speed), function(val)
+    CONFIG.Tween_Speed = tonumber(val) or CONFIG.Tween_Speed
+end)
+selfSection:Switch("Tween Around", false, function(val)
+    TOGGLES.TweenAround = val
+    if val then startTween() else stopTween() end
+end)
+
+selfSection:Divider("Auto Unlock Rigs")
 selfSection:Switch("Auto Unlock Rigs", false, function(state)
     if state then
         task.spawn(function()
