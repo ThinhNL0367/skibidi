@@ -1,5 +1,5 @@
 -- Credit: Skibidi Bucu Messi
--- AppleLibrary Build (Added Key & Stronghold TP)
+-- AppleLibrary Build (Added Bring Goo)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -18,6 +18,7 @@ local window = library:init("Skibidi Hub", true, Enum.KeyCode.RightShift, true)
 
 local TOGGLES = {
     BringEnabled = false,
+    BringGoo = false,
     InfAmmo = false,
     FireRate = false,
     InfHeal = false,
@@ -92,7 +93,7 @@ local function fireNearbyPrompts(count)
 end
 
 -- ================== LOGIC ==================
--- Bring Logic
+-- Bring Logic (Pallet/Scrap)
 local function getTargets(mode)
     local targets = {}
     local debris = workspace:FindFirstChild("DebrisField") or workspace
@@ -135,6 +136,50 @@ RunService.Heartbeat:Connect(function()
             end
         end
         current_idx = current_idx + 1
+        processed = processed + 1
+    end
+end)
+
+-- Bring Goo Logic (Dummy/Ragdoll)
+local goo_idx, goo_placed = 1, 0
+RunService.Heartbeat:Connect(function()
+    if not TOGGLES.BringGoo then return end
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    local targets = {}
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") or obj:IsA("BasePart") then
+            local n = obj.Name:lower()
+            if n:find("goo") or n:find("dummy") or n:find("ragdoll") then
+                table.insert(targets, obj)
+            end
+        end
+    end
+
+    if #targets == 0 then return end
+
+    local processed = 0
+    while processed < 30 do
+        if goo_idx > #targets then goo_idx = 1; goo_placed = 0; break end
+        local obj = targets[goo_idx]
+        if obj and obj.Parent then
+            local primary = obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")) or obj
+            if primary then
+                local col, row = goo_placed % 5, math.floor(goo_placed / 5)
+                local x_off, z_off = (col - 2.5 + 0.5) * 3, -5 - (row * 3)
+                local target_cf = root.CFrame * CFrame.new(x_off, 0, z_off)
+                if primary.Anchored then primary.Anchored = false end
+                pcall(function() primary:SetNetworkOwner(LP) end)
+                pcall(function() primary.CanCollide = false end)
+                if obj:IsA("Model") then obj:PivotTo(target_cf) else primary.CFrame = target_cf end
+                primary.AssemblyLinearVelocity = Vector3.zero
+                primary.AssemblyAngularVelocity = Vector3.zero
+                goo_placed = goo_placed + 1
+            end
+        end
+        goo_idx = goo_idx + 1
         processed = processed + 1
     end
 end)
@@ -300,6 +345,11 @@ end)
 farmSection:Switch("Bring Objects", false, function(val)
     TOGGLES.BringEnabled = val
     if val then current_idx = 1; placed_count = 0 end
+end)
+
+farmSection:Switch("Bring Goo", false, function(val)
+    TOGGLES.BringGoo = val
+    if val then goo_idx = 1; goo_placed = 0 end
 end)
 
 farmSection:Divider("Auto Store")
