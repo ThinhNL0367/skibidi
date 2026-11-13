@@ -1,5 +1,5 @@
 -- Credit: Skibidi Bucu Messi
--- AppleLibrary Build (Updated Kill Aura & CargoShip)
+-- AppleLibrary Build (Fixed Kill Aura)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -28,7 +28,7 @@ local TOGGLES = {
 }
 
 local CONFIG = {
-    KillAura_ID = 1037501,
+    KillAura_ID = 1037501, -- Mày có thể nhập ID mới trên GUI
     KillAura_Range = 1000,
     KillAura_Delay = 0.03,
     Store_Delay = 0.1,
@@ -229,7 +229,7 @@ task.spawn(function()
     end
 end)
 
--- Kill Aura Logic (Lọc bỏ _CLIENT)
+-- Kill Aura Logic (Lọc bỏ _CLIENT an toàn)
 task.spawn(function()
     while task.wait(CONFIG.KillAura_Delay) do
         if not TOGGLES.KillAura then continue end
@@ -249,8 +249,8 @@ task.spawn(function()
         
         for _, obj in ipairs(container:GetDescendants()) do
             if obj:IsA("Model") then
-                -- BỎ QUA NẾU TÊN KẾT THÚC BẰNG _CLIENT
-                if not obj.Name:match("_CLIENT$") then
+                -- Lọc _CLIENT (dùng string.find cho chắc chắn)
+                if not string.find(obj.Name, "_CLIENT") then
                     local hum = obj:FindFirstChildOfClass("Humanoid")
                     local hrp = obj:FindFirstChild("HumanoidRootPart")
                     if hum and hum.Health > 0 and hrp then
@@ -372,6 +372,9 @@ farmSection:Switch("Auto Drop (Bán Đồ)", false, function(val)
 end)
 
 farmSection:Divider("Kill Aura")
+farmSection:TextField("Gun ID (Lấy từ Cobalt)", tostring(CONFIG.KillAura_ID), function(val)
+    CONFIG.KillAura_ID = tonumber(val) or CONFIG.KillAura_ID
+end)
 farmSection:Switch("Kill Aura (Cần Sniper)", false, function(val)
     TOGGLES.KillAura = val
 end)
@@ -483,7 +486,6 @@ tpSection:Button("Ghost Galleon", function()
     if root then root.CFrame = CFrame.new(4130, 359, -2165) end
 end)
 
--- THÊM NÚT CARGOSHIP
 tpSection:Button("CargoShip", function()
     local char = LP.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
