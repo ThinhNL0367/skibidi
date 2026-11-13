@@ -1,5 +1,5 @@
 -- Credit: Skibidi Bucu Messi
--- AppleLibrary Build (Added Bring Goo)
+-- AppleLibrary Build (Updated Kill Aura & CargoShip)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -229,7 +229,7 @@ task.spawn(function()
     end
 end)
 
--- Kill Aura Logic
+-- Kill Aura Logic (Lọc bỏ _CLIENT)
 task.spawn(function()
     while task.wait(CONFIG.KillAura_Delay) do
         if not TOGGLES.KillAura then continue end
@@ -242,19 +242,25 @@ task.spawn(function()
         if not sniper then continue end
         local handle = sniper:FindFirstChild("Handle")
         if not handle then continue end
+        
         local container = workspace:FindFirstChild("CreatureContainer") or workspace
         local nearest = nil
         local min_dist = CONFIG.KillAura_Range
+        
         for _, obj in ipairs(container:GetDescendants()) do
             if obj:IsA("Model") then
-                local hum = obj:FindFirstChildOfClass("Humanoid")
-                local hrp = obj:FindFirstChild("HumanoidRootPart")
-                if hum and hum.Health > 0 and hrp then
-                    local d = (root.Position - hrp.Position).Magnitude
-                    if d < min_dist then min_dist = d; nearest = hrp end
+                -- BỎ QUA NẾU TÊN KẾT THÚC BẰNG _CLIENT
+                if not obj.Name:match("_CLIENT$") then
+                    local hum = obj:FindFirstChildOfClass("Humanoid")
+                    local hrp = obj:FindFirstChild("HumanoidRootPart")
+                    if hum and hum.Health > 0 and hrp then
+                        local d = (root.Position - hrp.Position).Magnitude
+                        if d < min_dist then min_dist = d; nearest = hrp end
+                    end
                 end
             end
         end
+        
         if nearest then
             local t_pos = nearest.Position
             local dir = (t_pos - root.Position).Unit
@@ -475,6 +481,13 @@ tpSection:Button("Ghost Galleon", function()
     local char = LP.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if root then root.CFrame = CFrame.new(4130, 359, -2165) end
+end)
+
+-- THÊM NÚT CARGOSHIP
+tpSection:Button("CargoShip", function()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then root.CFrame = CFrame.new(-1629, 233, 3042) end
 end)
 
 tpSection:Button("Base", function()
