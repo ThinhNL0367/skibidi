@@ -1,5 +1,5 @@
 -- Credit: Skibidi Bucu Messi
--- AppleLibrary Build (Added Base TP + Fixed Bring Select)
+-- AppleLibrary Build (Added Key & Stronghold TP)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -292,7 +292,6 @@ end)
 -- FARM TAB
 local farmSection = window:Section("Farm")
 
--- PHẦN CHỌN OBJECT ĐỂ BRING Ở ĐÂY
 farmSection:Divider("Bring Objects")
 farmSection:Select("Bring Type", {"Pallet", "Scrap"}, "Pallet", function(val)
     CONFIG.BringMode = val
@@ -421,17 +420,41 @@ end)
 
 -- TELEPORT TAB
 local tpSection = window:Section("Teleport")
+
 tpSection:Button("Ghost Galleon", function()
     local char = LP.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if root then root.CFrame = CFrame.new(4130, 359, -2165) end
 end)
 
--- THÊM NÚT BASE
 tpSection:Button("Base", function()
     local char = LP.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if root then root.CFrame = CFrame.new(277, 162, -256) end
+end)
+
+tpSection:Button("Key 1", function()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then root.CFrame = CFrame.new(-1129, 178, -477) end
+end)
+
+tpSection:Button("Key 2", function()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then root.CFrame = CFrame.new(278, 170, 2202) end
+end)
+
+tpSection:Button("Key 3", function()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then root.CFrame = CFrame.new(3559, 201, -791) end
+end)
+
+tpSection:Button("StrongHold", function()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then root.CFrame = CFrame.new(3074, 259, 657) end
 end)
 
 tpSection:Button("Rig1", function()
