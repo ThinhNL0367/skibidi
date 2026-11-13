@@ -1,5 +1,5 @@
 -- Credit: Skibidi Bucu Messi
--- NYX HUB (Core GUI + Self + Teleport)
+-- NYX HUB (Core GUI + Self + Teleport + Kill Aura)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -25,7 +25,14 @@ local TOGGLES = {
     BringEnabled = false,
     InfAmmo = false,
     FireRate = false,
-    InfHeal = false
+    InfHeal = false,
+    KillAura = false
+}
+
+local CONFIG = {
+    KillAura_ID = 1037501, -- ID mặc định
+    KillAura_Range = 1000,
+    KillAura_Delay = 0.02
 }
 
 local screen = Instance.new("ScreenGui")
@@ -307,6 +314,26 @@ local function createDropdown(page, text, options, default, callback)
     end)
 end
 
+local function createTextBox(page, placeholder, default, callback)
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(1, -10, 0, 35)
+    box.BackgroundColor3 = THEME.surface
+    box.TextColor3 = THEME.text
+    box.PlaceholderText = placeholder
+    box.PlaceholderColor3 = THEME.text_dim
+    box.Text = default
+    box.Font = Enum.Font.Code
+    box.TextSize = 14
+    box.BorderSizePixel = 0
+    box.ClearTextOnFocus = false
+    box.Parent = page
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
+    
+    box.FocusLost:Connect(function()
+        if callback then callback(box.Text) end
+    end)
+end
+
 -- ================== TAB FARM ==================
 local BringMode = "Pallet"
 
@@ -372,8 +399,73 @@ createToggle(FarmTab, "Bring Objects", false, function(state)
     if state then current_idx = 1; placed_count = 0 end
 end)
 
+-- KILL AURA VÀO FARM TAB
+createTextBox(FarmTab, "Nhập ID Súng...", tostring(CONFIG.KillAura_ID), function(text)
+    CONFIG.KillAura_ID = tonumber(text) or CONFIG.KillAura_ID
+end)
+
+createToggle(FarmTab, "Kill Aura (Cần Sniper)", false, function(state)
+    TOGGLES.KillAura = state
+end)
+
+-- LOGIC KILL AURA
+local social_event = game:GetService("SocialService"):FindFirstChild("RemoteFunction")
+task.spawn(function()
+    while task.wait(CONFIG.KillAura_Delay) do
+        if not TOGGLES.KillAura then continue end
+        if not social_event then continue end
+        
+        local char = LP.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if not root then continue end
+        
+        local sniper = char:FindFirstChild("Sniper Rifle")
+        if not sniper then continue end
+        
+        local handle = sniper:FindFirstChild("Handle")
+        if not handle then continue end
+        
+        local container = workspace:FindFirstChild("CreatureContainer") or workspace
+        local nearest = nil
+        local min_dist = CONFIG.KillAura_Range
+        
+        for _, obj in ipairs(container:GetDescendants()) do
+            if obj:IsA("Model") then
+                local hum = obj:FindFirstChildOfClass("Humanoid")
+                local hrp = obj:FindFirstChild("HumanoidRootPart")
+                if hum and hum.Health > 0 and hrp then
+                    local dist = (root.Position - hrp.Position).Magnitude
+                    if dist < min_dist then min_dist = dist; nearest = hrp end
+                end
+            end
+        end
+        
+        if nearest then
+            local target_pos = nearest.Position
+            local direction = (target_pos - root.Position).Unit
+            
+            local v_str = string.format("~t{1=~f%.4f,%.4f,%.4f:%.4f,%.4f,%.4fZ-1}", 
+                target_pos.X, target_pos.Y, target_pos.Z,
+                direction.X, direction.Y, direction.Z
+            )
+            
+            task.spawn(function()
+                pcall(function()
+                    social_event:InvokeServer(
+                        CONFIG.KillAura_ID,
+                        "ToolReplicator",
+                        "~sGun",
+                        "~sShoot",
+                        handle,
+                        v_str
+                    )
+                end)
+            end)
+        end
+    end
+end)
+
 -- ================== TAB SELF ==================
--- 1. Auto Unlock Rigs
 local isUnlocking = false
 createToggle(SelfTab, "Auto Unlock Rigs", false, function(state)
     if state then
@@ -418,7 +510,6 @@ createToggle(SelfTab, "Auto Unlock Rigs", false, function(state)
     end
 end)
 
--- 2. Inf Ammo (Bơm đạn cho mọi loại súng)
 task.spawn(function()
     while task.wait(0.5) do
         if TOGGLES.InfAmmo then
@@ -435,7 +526,6 @@ createToggle(SelfTab, "Inf Ammo", false, function(state)
     TOGGLES.InfAmmo = state
 end)
 
--- 3. Fire Rate (Bắn siêu nhanh + Nạp tức thì cho Sniper, Rifle, Flintlock)
 task.spawn(function()
     task.wait(1)
     local success, GlobalAPI = pcall(function() return require(game.ReplicatedStorage.GlobalAPI) end)
@@ -443,17 +533,10 @@ task.spawn(function()
         local oldRealWait = GlobalAPI.RealWait
         GlobalAPI.RealWait = newcclosure(function(t)
             if not TOGGLES.FireRate then return oldRealWait(t) end
-            
-            -- 1. Thời gian nạp đạn (0.2s -> 2s) -> Nạp tức thì (0s)
-            if t >= 0.2 and t <= 2 then 
-                return oldRealWait(0) 
-            end
-            
-            -- 2. Thời gian hồi chiêu sau khi bắn
-            if t > 1 then return oldRealWait(0.05) end -- Sniper
-            if t == 0.12 then return oldRealWait(0.02) end -- Rifle
-            if t == 0.2 then return oldRealWait(0.02) end -- Flintlock
-            
+            if t > 1 then return oldRealWait(0.05) end
+            if t >= 0.2 and t <= 2 then return oldRealWait(0) end
+            if t == 0.12 then return oldRealWait(0.02) end
+            if t == 0.2 then return oldRealWait(0.02) end
             return oldRealWait(t)
         end)
     end
@@ -462,7 +545,6 @@ createToggle(SelfTab, "Fire Rate", false, function(state)
     TOGGLES.FireRate = state
 end)
 
--- 4. Inf Heal
 task.spawn(function()
     local mt = getrawmetatable(game)
     local old_namecall = mt.__namecall
