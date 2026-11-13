@@ -1,5 +1,5 @@
 -- Credit: Skibidi Bucu Messi
--- AppleLibrary Build (Added Collect Tab)
+-- AppleLibrary Build (Added Base TP + Fixed Bring Select)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -87,7 +87,7 @@ local function fireNearbyPrompts(count)
                 end
             end
         end
-        task.wait(0.5) -- Đợi 0.5s giữa mỗi lần bấm
+        task.wait(0.5)
     end
 end
 
@@ -291,6 +291,8 @@ end)
 
 -- FARM TAB
 local farmSection = window:Section("Farm")
+
+-- PHẦN CHỌN OBJECT ĐỂ BRING Ở ĐÂY
 farmSection:Divider("Bring Objects")
 farmSection:Select("Bring Type", {"Pallet", "Scrap"}, "Pallet", function(val)
     CONFIG.BringMode = val
@@ -328,13 +330,10 @@ collectSection:Button("Auto Rescue 1", function()
         local char = LP.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         if not root then return end
-        
         local orig_pos = root.CFrame
         root.CFrame = CFrame.new(217, 236, -1822)
-        task.wait(1)
-        fireNearbyPrompts(1)
-        task.wait(0.5)
-        root.CFrame = orig_pos
+        task.wait(1) fireNearbyPrompts(1)
+        task.wait(0.5) root.CFrame = orig_pos
     end)
 end)
 
@@ -343,23 +342,18 @@ collectSection:Button("Auto Rescue 2", function()
         local char = LP.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         if not root then return end
-        
         local orig_pos = root.CFrame
         
         root.CFrame = CFrame.new(392, 199, 3743)
         task.wait(0.5) fireNearbyPrompts(6)
-        
         root.CFrame = CFrame.new(340, 185, 3789)
         task.wait(0.5) fireNearbyPrompts(4)
-        
         root.CFrame = CFrame.new(279, 175, 3774)
         task.wait(0.5) fireNearbyPrompts(7)
-        
         root.CFrame = CFrame.new(271, 166, 3814)
         task.wait(0.5) fireNearbyPrompts(1)
         
-        task.wait(0.5)
-        root.CFrame = orig_pos
+        task.wait(0.5) root.CFrame = orig_pos
     end)
 end)
 
@@ -368,15 +362,12 @@ collectSection:Button("Auto Rescue 3", function()
         local char = LP.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         if not root then return end
-        
         local orig_pos = root.CFrame
         
         root.CFrame = CFrame.new(-1198, 193, 2287)
         task.wait(0.5) fireNearbyPrompts(1)
-        
         root.CFrame = CFrame.new(-1280, 156, 2400)
         task.wait(0.5) fireNearbyPrompts(1)
-        
         root.CFrame = CFrame.new(-1327, 158, 2247)
         task.wait(0.5) fireNearbyPrompts(1)
         
@@ -385,8 +376,7 @@ collectSection:Button("Auto Rescue 3", function()
         root.CFrame = CFrame.new(-1256, 199, 2306)
         task.wait(0.5) fireNearbyPrompts(1)
         
-        task.wait(0.5)
-        root.CFrame = orig_pos
+        task.wait(0.5) root.CFrame = orig_pos
     end)
 end)
 
@@ -402,13 +392,11 @@ selfSection:Switch("Auto Unlock Rigs", false, function(state)
             if not char then return end
             local root = char:FindFirstChild("HumanoidRootPart")
             if not root then return end
-            
             local positions = {
                 CFrame.new(-614, 172, 744),
                 CFrame.new(1746, 172, -553),
                 CFrame.new(-672, 172, -1424)
             }
-            
             for i, pos in ipairs(positions) do
                 root.CFrame = pos
                 task.wait(0.5) 
@@ -438,6 +426,14 @@ tpSection:Button("Ghost Galleon", function()
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if root then root.CFrame = CFrame.new(4130, 359, -2165) end
 end)
+
+-- THÊM NÚT BASE
+tpSection:Button("Base", function()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then root.CFrame = CFrame.new(277, 162, -256) end
+end)
+
 tpSection:Button("Rig1", function()
     local char = LP.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
