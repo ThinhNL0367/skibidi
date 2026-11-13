@@ -1,5 +1,5 @@
 -- Credit: Skibidi Bucu Messi
--- AppleLibrary Build (Fixed Kill Aura)
+-- AppleLibrary Build (Kill Aura for Animals & Mobs)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -28,7 +28,7 @@ local TOGGLES = {
 }
 
 local CONFIG = {
-    KillAura_ID = 1037501, -- Mày có thể nhập ID mới trên GUI
+    KillAura_ID = 1037501, 
     KillAura_Range = 1000,
     KillAura_Delay = 0.03,
     Store_Delay = 0.1,
@@ -229,15 +229,17 @@ task.spawn(function()
     end
 end)
 
--- Kill Aura Logic (Lọc bỏ _CLIENT an toàn)
+-- ================== KILL AURA LOGIC ==================
 task.spawn(function()
     while task.wait(CONFIG.KillAura_Delay) do
         if not TOGGLES.KillAura then continue end
         local net_func = getNetworkFunction()
         if not net_func then continue end
+        
         local char = LP.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         if not root then continue end
+        
         local sniper = char:FindFirstChild("Sniper Rifle")
         if not sniper then continue end
         local handle = sniper:FindFirstChild("Handle")
@@ -247,15 +249,40 @@ task.spawn(function()
         local nearest = nil
         local min_dist = CONFIG.KillAura_Range
         
-        for _, obj in ipairs(container:GetDescendants()) do
+        for _, obj in ipairs(container:GetChildren()) do
             if obj:IsA("Model") then
-                -- Lọc _CLIENT (dùng string.find cho chắc chắn)
+                -- Bỏ qua nếu là client clone
                 if not string.find(obj.Name, "_CLIENT") then
-                    local hum = obj:FindFirstChildOfClass("Humanoid")
-                    local hrp = obj:FindFirstChild("HumanoidRootPart")
-                    if hum and hum.Health > 0 and hrp then
-                        local d = (root.Position - hrp.Position).Magnitude
-                        if d < min_dist then min_dist = d; nearest = hrp end
+                    
+                    -- Tìm root linh hoạt (HumanoidRootPart, RootPart, hoặc PrimaryPart)
+                    local hrp = obj:FindFirstChild("HumanoidRootPart") 
+                             or obj:FindFirstChild("RootPart") 
+                             or obj.PrimaryPart
+                             or obj:FindFirstChildWhichIsA("BasePart")
+                    
+                    if hrp then
+                        -- Kiểm tra sinh mệnh
+                        local isAlive = true
+                        
+                        -- 1. Nếu có Humanoid, check máu Humanoid
+                        local hum = obj:FindFirstChildOfClass("Humanoid")
+                        if hum then
+                            isAlive = hum.Health > 0
+                        else
+                            -- 2. Nếu là động vật dùng Value, tìm biến "Health"
+                            local healthVal = obj:FindFirstChild("Health") or obj:FindFirstChild("HP")
+                            if healthVal and (healthVal:IsA("NumberValue") or healthVal:IsA("IntValue")) then
+                                isAlive = healthVal.Value > 0
+                            end
+                        end
+                        
+                        if isAlive then
+                            local d = (root.Position - hrp.Position).Magnitude
+                            if d < min_dist then 
+                                min_dist = d
+                                nearest = hrp 
+                            end
+                        end
                     end
                 end
             end
