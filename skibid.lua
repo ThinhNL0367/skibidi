@@ -1,25 +1,20 @@
 -- Credit: Skibidi Bucu Messi
--- NYX HUB (Core GUI + Full Features)
+-- AppleLibrary Build (Added Collect Tab)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 local LP = Players.LocalPlayer
-local parent = (gethui and gethui()) or LP:WaitForChild("PlayerGui")
 
-local old = parent:FindFirstChild("SkibidiHubGui")
-if old then old:Destroy() end
+-- Load Library
+local ok, library = pcall(function()
+    return loadstring(game:HttpGet("https://github.com/GoHamza/AppleLibrary/blob/main/main.lua?raw=true"))()
+end)
 
-local THEME = {
-    bg = Color3.fromRGB(15, 15, 18),
-    surface = Color3.fromRGB(25, 25, 30),
-    accent = Color3.fromRGB(138, 43, 226),
-    text = Color3.fromRGB(255, 255, 255),
-    text_dim = Color3.fromRGB(150, 150, 160),
-    success = Color3.fromRGB(40, 200, 100),
-    danger = Color3.fromRGB(220, 50, 50)
-}
+if not ok or not library then
+    return warn("[NYX] Không thể tải thư viện UI!")
+end
+
+local window = library:init("Skibidi Hub", true, Enum.KeyCode.RightShift, true)
 
 local TOGGLES = {
     BringEnabled = false,
@@ -27,16 +22,21 @@ local TOGGLES = {
     FireRate = false,
     InfHeal = false,
     KillAura = false,
-    AutoStore = false
+    AutoStore = false,
+    AutoDrop = false
 }
 
 local CONFIG = {
-    KillAura_ID = 6627009, 
+    KillAura_ID = 1037501,
     KillAura_Range = 1000,
     KillAura_Delay = 0.03,
     Store_Delay = 0.1,
+    Drop_Delay = 0.1,
     StoreMode = "Pallet",
-    BagID = 6763635
+    BringMode = "Pallet",
+    BagID = 6763635,
+    Drop_ID = 2992966,
+    Drop_Pos = Vector3.new(275, 156, -246)
 }
 
 local StoreKeywords = {
@@ -44,21 +44,23 @@ local StoreKeywords = {
     Scrap = {"scrap", "anchor", "engine", "carbattery", "propellor", "metalbeam"}
 }
 
--- HÀM TỰ ĐỘNG TÌM REMOTE
-local cached_event = nil
+-- ================== AUTO-SCAN NETWORK ==================
 local function getNetworkEvent()
-    if cached_event and cached_event.Parent then return cached_event end
     for _, service in ipairs(game:GetChildren()) do
         local re = service:FindFirstChild("RemoteEvent")
-        if re and re:IsA("RemoteEvent") then
-            cached_event = re
-            return re
-        end
+        if re and re:IsA("RemoteEvent") then return re end
     end
     return nil
 end
 
--- HÀM QUÉT BỘ NHỚ ẨN
+local function getNetworkFunction()
+    for _, service in ipairs(game:GetChildren()) do
+        local rf = service:FindFirstChild("RemoteFunction")
+        if rf and rf:IsA("RemoteFunction") then return rf end
+    end
+    return nil
+end
+
 local function getHiddenObject(keyword)
     if not getnilinstances then return nil end
     for _, obj in pairs(getnilinstances()) do
@@ -67,310 +69,34 @@ local function getHiddenObject(keyword)
     return nil
 end
 
--- TẠO GUI
-local screen = Instance.new("ScreenGui")
-screen.Name = "SkibidiHubGui"
-screen.ResetOnSpawn = false
-screen.DisplayOrder = 999
-screen.Parent = parent
-
-local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 400, 0, 320)
-main.Position = UDim2.new(0.5, -200, 0.5, -160)
-main.BackgroundColor3 = THEME.bg
-main.BorderSizePixel = 0
-main.Active = true
-main.Parent = screen
-Instance.new("UICorner", main).CornerRadius = UDim.new(0, 8)
-
-local stroke = Instance.new("UIStroke", main)
-stroke.Color = THEME.accent
-stroke.Thickness = 1.5
-
-local dragging, dragInput, dragStart, startPos
-main.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true; dragStart = input.Position; startPos = main.Position
-        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
-    end
-end)
-main.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
-local header = Instance.new("Frame")
-header.Size = UDim2.new(1, 0, 0, 40)
-header.BackgroundTransparency = 1
-header.Parent = main
-
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(0, 200, 1, 0)
-title.Position = UDim2.new(0, 15, 0, 0)
-title.BackgroundTransparency = 1
-title.Text = "Skibidi"
-title.TextColor3 = THEME.text
-title.TextSize = 18
-title.Font = Enum.Font.GothamBlack
-title.TextXAlignment = Enum.TextXAlignment.Left
-title.Parent = header
-
-local subTitle = Instance.new("TextLabel")
-subTitle.Size = UDim2.new(0, 100, 1, 0)
-subTitle.Position = UDim2.new(1, -115, 0, 2)
-subTitle.BackgroundTransparency = 1
-subTitle.Text = "#thinh"
-subTitle.TextColor3 = THEME.text_dim
-subTitle.TextSize = 12
-subTitle.Font = Enum.Font.Gotham
-subTitle.TextXAlignment = Enum.TextXAlignment.Right
-subTitle.Parent = header
-
-local line = Instance.new("Frame")
-line.Size = UDim2.new(1, -30, 0, 1)
-line.Position = UDim2.new(0, 15, 0, 40)
-line.BackgroundColor3 = THEME.surface
-line.BorderSizePixel = 0
-line.Parent = main
-
-local tabMenu = Instance.new("Frame")
-tabMenu.Size = UDim2.new(0, 90, 1, -55)
-tabMenu.Position = UDim2.new(0, 10, 0, 45)
-tabMenu.BackgroundTransparency = 1
-tabMenu.Parent = main
-
-local tabLayout = Instance.new("UIListLayout")
-tabLayout.Padding = UDim.new(0, 4)
-tabLayout.Parent = tabMenu
-
-local contentArea = Instance.new("Frame")
-contentArea.Size = UDim2.new(1, -110, 1, -55)
-contentArea.Position = UDim2.new(0, 100, 0, 45)
-contentArea.BackgroundTransparency = 1
-contentArea.Parent = main
-
-local tabs = {}
-local currentTab = nil
-
-local function createTab(name)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 30)
-    btn.BackgroundColor3 = THEME.surface
-    btn.Text = name
-    btn.TextColor3 = THEME.text_dim
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 12
-    btn.BorderSizePixel = 0
-    btn.Parent = tabMenu
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    
-    local page = Instance.new("ScrollingFrame")
-    page.Size = UDim2.new(1, 0, 1, 0)
-    page.BackgroundTransparency = 1
-    page.BorderSizePixel = 0
-    page.ScrollBarThickness = 2
-    page.Visible = false
-    page.Parent = contentArea
-    Instance.new("UIListLayout", page).Padding = UDim.new(0, 5)
-    
-    tabs[name] = page
-    
-    btn.MouseButton1Click:Connect(function()
-        for n, p in pairs(tabs) do p.Visible = false end
-        for _, c in ipairs(tabMenu:GetChildren()) do
-            if c:IsA("TextButton") then
-                c.BackgroundColor3 = THEME.surface
-                c.TextColor3 = THEME.text_dim
+-- Hàm hỗ trợ bấm Prompt
+local function fireNearbyPrompts(count)
+    for i = 1, count do
+        local char = LP.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("ProximityPrompt") and obj.Enabled then
+                    local part = obj.Parent
+                    if part and part:IsA("BasePart") then
+                        if (part.Position - root.Position).Magnitude <= 20 then
+                            obj.HoldDuration = 0
+                            fireproximityprompt(obj)
+                        end
+                    end
+                end
             end
         end
-        btn.BackgroundColor3 = THEME.accent
-        btn.TextColor3 = THEME.text
-        page.Visible = true
-    end)
-    
-    if not currentTab then
-        currentTab = btn
-        btn.BackgroundColor3 = THEME.accent
-        btn.TextColor3 = THEME.text
-        page.Visible = true
+        task.wait(0.5) -- Đợi 0.5s giữa mỗi lần bấm
     end
-    
-    return page
 end
 
-local FarmTab = createTab("Farm")
-local CollectTab = createTab("Collect")
-local SelfTab = createTab("Self")
-local TeleportTab = createTab("Teleport")
-local MiscTab = createTab("Misc")
-
-local function createToggle(page, text, default, callback)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -10, 0, 35)
-    frame.BackgroundColor3 = THEME.surface
-    frame.BorderSizePixel = 0
-    frame.Parent = page
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
-    
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -50, 1, 0)
-    lbl.Position = UDim2.new(0, 10, 0, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = text
-    lbl.TextColor3 = THEME.text
-    lbl.TextSize = 12
-    lbl.Font = Enum.Font.Gotham
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = frame
-    
-    local switch = Instance.new("TextButton")
-    switch.Size = UDim2.new(0, 30, 0, 15)
-    switch.Position = UDim2.new(1, -40, 0.5, -7)
-    switch.BackgroundColor3 = default and THEME.success or THEME.surface
-    switch.Text = ""
-    switch.BorderSizePixel = 0
-    switch.Parent = frame
-    Instance.new("UICorner", switch).CornerRadius = UDim.new(0, 15)
-    
-    local circle = Instance.new("Frame")
-    circle.Size = UDim2.new(0, 13, 0, 13)
-    circle.Position = default and UDim2.new(0, 15, 0, 1) or UDim2.new(0, 1, 0, 1)
-    circle.BackgroundColor3 = THEME.text
-    circle.Parent = switch
-    Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
-    
-    local state = default
-    switch.MouseButton1Click:Connect(function()
-        state = not state
-        TweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = state and THEME.success or THEME.surface}):Play()
-        TweenService:Create(circle, TweenInfo.new(0.2), {Position = state and UDim2.new(0, 15, 0, 1) or UDim2.new(0, 1, 0, 1)}):Play()
-        if callback then callback(state) end
-    end)
-end
-
-local function createButton(page, text, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -10, 0, 35)
-    btn.BackgroundColor3 = THEME.surface
-    btn.Text = text
-    btn.TextColor3 = THEME.text
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 12
-    btn.BorderSizePixel = 0
-    btn.Parent = page
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    
-    btn.MouseButton1Click:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = THEME.accent}):Play()
-        task.delay(0.2, function()
-            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = THEME.surface}):Play()
-        end)
-        if callback then callback() end
-    end)
-end
-
-local function createDropdown(page, text, options, default, callback)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -10, 0, 35)
-    frame.BackgroundColor3 = THEME.surface
-    frame.BorderSizePixel = 0
-    frame.Parent = page
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
-    
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -100, 1, 0)
-    lbl.Position = UDim2.new(0, 10, 0, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = text
-    lbl.TextColor3 = THEME.text
-    lbl.TextSize = 12
-    lbl.Font = Enum.Font.Gotham
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.Parent = frame
-    
-    local selectBtn = Instance.new("TextButton")
-    selectBtn.Size = UDim2.new(0, 70, 0, 24)
-    selectBtn.Position = UDim2.new(1, -80, 0.5, -12)
-    selectBtn.BackgroundColor3 = THEME.bg
-    selectBtn.Text = default
-    selectBtn.TextColor3 = THEME.text_dim
-    selectBtn.Font = Enum.Font.Gotham
-    selectBtn.TextSize = 11
-    selectBtn.BorderSizePixel = 0
-    selectBtn.Parent = frame
-    Instance.new("UICorner", selectBtn).CornerRadius = UDim.new(0, 4)
-    
-    local dropFrame = Instance.new("Frame")
-    dropFrame.Size = UDim2.new(0, 70, 0, #options * 24)
-    dropFrame.Position = UDim2.new(1, -80, 1, 5)
-    dropFrame.BackgroundColor3 = THEME.bg
-    dropFrame.BorderSizePixel = 0
-    dropFrame.Visible = false
-    dropFrame.ZIndex = 10
-    dropFrame.Parent = frame
-    Instance.new("UICorner", dropFrame).CornerRadius = UDim.new(0, 4)
-    
-    local dropLayout = Instance.new("UIListLayout")
-    dropLayout.Parent = dropFrame
-    
-    for _, opt in ipairs(options) do
-        local optBtn = Instance.new("TextButton")
-        optBtn.Size = UDim2.new(1, 0, 0, 24)
-        optBtn.BackgroundTransparency = 1
-        optBtn.Text = opt
-        optBtn.TextColor3 = THEME.text_dim
-        optBtn.Font = Enum.Font.Gotham
-        optBtn.TextSize = 11
-        optBtn.ZIndex = 11
-        optBtn.Parent = dropFrame
-        
-        optBtn.MouseButton1Click:Connect(function()
-            selectBtn.Text = opt
-            dropFrame.Visible = false
-            if callback then callback(opt) end
-        end)
-    end
-    
-    selectBtn.MouseButton1Click:Connect(function()
-        dropFrame.Visible = not dropFrame.Visible
-    end)
-end
-
-local function createTextBox(page, placeholder, default, callback)
-    local box = Instance.new("TextBox")
-    box.Size = UDim2.new(1, -10, 0, 35)
-    box.BackgroundColor3 = THEME.surface
-    box.TextColor3 = THEME.text
-    box.PlaceholderText = placeholder
-    box.PlaceholderColor3 = THEME.text_dim
-    box.Text = default
-    box.Font = Enum.Font.Code
-    box.TextSize = 14
-    box.BorderSizePixel = 0
-    box.ClearTextOnFocus = false
-    box.Parent = page
-    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
-    
-    box.FocusLost:Connect(function()
-        if callback then callback(box.Text) end
-    end)
-end
-
--- ================== TAB FARM ==================
-local BringMode = "Pallet"
-
+-- ================== LOGIC ==================
+-- Bring Logic
 local function getTargets(mode)
     local targets = {}
     local debris = workspace:FindFirstChild("DebrisField") or workspace
-    local keywords = {}
-    if mode == "Pallet" then keywords = {"pallet"}
-    elseif mode == "Scrap" then keywords = {"scrap", "anchor", "engine", "carbattery", "propellor", "metalbeam"} end
-    
+    local keywords = StoreKeywords[mode]
     for _, obj in ipairs(debris:GetDescendants()) do
         if obj:IsA("Model") or obj:IsA("BasePart") then
             local n = obj.Name:lower()
@@ -383,7 +109,7 @@ end
 local placed_count, current_idx = 0, 1
 RunService.Heartbeat:Connect(function()
     if not TOGGLES.BringEnabled then return end
-    local targets = getTargets(BringMode)
+    local targets = getTargets(CONFIG.BringMode)
     if #targets == 0 then return end
     local char = LP.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -399,11 +125,9 @@ RunService.Heartbeat:Connect(function()
                 local col, row = placed_count % 5, math.floor(placed_count / 5)
                 local x_off, z_off = (col - 2.5 + 0.5) * 3, -5 - (row * 3)
                 local target_cf = root.CFrame * CFrame.new(x_off, 0, z_off)
-                
                 if primary.Anchored then primary.Anchored = false end
                 pcall(function() primary:SetNetworkOwner(LP) end)
                 pcall(function() primary.CanCollide = false end)
-                
                 if obj:IsA("Model") then obj:PivotTo(target_cf) else primary.CFrame = target_cf end
                 primary.AssemblyLinearVelocity = Vector3.zero
                 primary.AssemblyAngularVelocity = Vector3.zero
@@ -415,175 +139,89 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
-createDropdown(FarmTab, "Bring Object", {"Pallet", "Scrap"}, "Pallet", function(val)
-    BringMode = val
-    current_idx = 1
-    placed_count = 0
-end)
-
-createToggle(FarmTab, "Bring Objects", false, function(state)
-    TOGGLES.BringEnabled = state
-    if state then current_idx = 1; placed_count = 0 end
-end)
-
--- AUTO STORE
-createDropdown(FarmTab, "Store Object", {"Pallet", "Scrap"}, "Pallet", function(val)
-    CONFIG.StoreMode = val
-end)
-
-createToggle(FarmTab, "Auto Store (Vét Sạch)", false, function(state)
-    TOGGLES.AutoStore = state
-end)
-
+-- Auto Store Logic
 task.spawn(function()
     while task.wait(CONFIG.Store_Delay) do
         if not TOGGLES.AutoStore then continue end
         local net_event = getNetworkEvent()
         if not net_event then continue end
-
         local target_obj = nil
         local keywords = StoreKeywords[CONFIG.StoreMode]
-
-        -- 1. Tìm trên map
         for _, obj in ipairs(workspace:GetDescendants()) do
             if (obj:IsA("Model") or obj:IsA("BasePart")) then
                 local n = obj.Name:lower()
-                for _, k in ipairs(keywords) do
-                    if n:find(k) then
-                        target_obj = obj
-                        break
-                    end
-                end
+                for _, k in ipairs(keywords) do if n:find(k) then target_obj = obj; break end end
             end
             if target_obj then break end
         end
-
-        -- 2. Tìm ẩn (Dành cho Delta)
         if not target_obj and getnilinstances then
             for _, k in ipairs(keywords) do
                 target_obj = getHiddenObject(k)
                 if target_obj then break end
             end
         end
-
         if target_obj then
-            pcall(function()
-                net_event:FireServer(CONFIG.BagID, "StoreItem", target_obj)
-            end)
+            pcall(function() net_event:FireServer(CONFIG.BagID, "StoreItem", target_obj) end)
         end
     end
 end)
 
--- KILL AURA
-createTextBox(FarmTab, "Nhập ID Súng...", tostring(CONFIG.KillAura_ID), function(text)
-    CONFIG.KillAura_ID = tonumber(text) or CONFIG.KillAura_ID
-end)
-
-createToggle(FarmTab, "Kill Aura (Cần Sniper)", false, function(state)
-    TOGGLES.KillAura = state
-end)
-
+-- Auto Drop Logic
 task.spawn(function()
-    while task.wait(CONFIG.KillAura_Delay) do
-        if not TOGGLES.KillAura then continue end
-        local network_event = getNetworkEvent()
-        if not network_event then continue end
-        
+    while task.wait(CONFIG.Drop_Delay) do
+        if not TOGGLES.AutoDrop then continue end
+        local net_event = getNetworkEvent()
+        if not net_event then continue end
         local char = LP.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         if not root then continue end
-        
+        local dist = (root.Position - CONFIG.Drop_Pos).Magnitude
+        if dist > 5 then
+            root.CFrame = CFrame.new(CONFIG.Drop_Pos)
+            task.wait(0.2)
+        end
+        pcall(function() net_event:FireServer(CONFIG.Drop_ID, "DropItem") end)
+    end
+end)
+
+-- Kill Aura Logic
+task.spawn(function()
+    while task.wait(CONFIG.KillAura_Delay) do
+        if not TOGGLES.KillAura then continue end
+        local net_func = getNetworkFunction()
+        if not net_func then continue end
+        local char = LP.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if not root then continue end
         local sniper = char:FindFirstChild("Sniper Rifle")
         if not sniper then continue end
-        
         local handle = sniper:FindFirstChild("Handle")
         if not handle then continue end
-        
         local container = workspace:FindFirstChild("CreatureContainer") or workspace
         local nearest = nil
         local min_dist = CONFIG.KillAura_Range
-        
         for _, obj in ipairs(container:GetDescendants()) do
             if obj:IsA("Model") then
                 local hum = obj:FindFirstChildOfClass("Humanoid")
                 local hrp = obj:FindFirstChild("HumanoidRootPart")
                 if hum and hum.Health > 0 and hrp then
-                    local dist = (root.Position - hrp.Position).Magnitude
-                    if dist < min_dist then min_dist = dist; nearest = hrp end
+                    local d = (root.Position - hrp.Position).Magnitude
+                    if d < min_dist then min_dist = d; nearest = hrp end
                 end
             end
         end
-        
         if nearest then
-            local target_pos = nearest.Position
-            local direction = (target_pos - root.Position).Unit
-            
-            local v_str = string.format("~t{1=~f%.4f,%.4f,%.4f:%.4f,%.4f,%.4fZ-1}", 
-                target_pos.X, target_pos.Y, target_pos.Z,
-                direction.X, direction.Y, direction.Z
-            )
-            
+            local t_pos = nearest.Position
+            local dir = (t_pos - root.Position).Unit
+            local v_str = string.format("~t{1=~f%.4f,%.4f,%.4f:%.4f,%.4f,%.4fZ-1}", t_pos.X, t_pos.Y, t_pos.Z, dir.X, dir.Y, dir.Z)
             task.spawn(function()
-                pcall(function()
-                    network_event:InvokeServer(
-                        CONFIG.KillAura_ID,
-                        "ToolReplicator",
-                        "~sGun",
-                        "~sShoot",
-                        handle,
-                        v_str
-                    )
-                end)
+                pcall(function() net_func:InvokeServer(CONFIG.KillAura_ID, "ToolReplicator", "~sGun", "~sShoot", handle, v_str) end)
             end)
         end
     end
 end)
 
--- ================== TAB SELF ==================
-local isUnlocking = false
-createToggle(SelfTab, "Auto Unlock Rigs", false, function(state)
-    if state then
-        if isUnlocking then return end
-        isUnlocking = true
-        
-        task.spawn(function()
-            local char = LP.Character
-            if not char then isUnlocking = false; return end
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if not root then isUnlocking = false; return end
-
-            local positions = {
-                CFrame.new(-614, 172, 744),
-                CFrame.new(1746, 172, -553),
-                CFrame.new(-672, 172, -1424)
-            }
-
-            for i, pos in ipairs(positions) do
-                root.CFrame = pos
-                task.wait(0.5) 
-                
-                for _, obj in ipairs(workspace:GetDescendants()) do
-                    if obj:IsA("ProximityPrompt") and obj.Enabled then
-                        local part = obj.Parent
-                        if part and part:IsA("BasePart") then
-                            local dist = (part.Position - pos.Position).Magnitude
-                            if dist <= 20 then
-                                obj.HoldDuration = 0
-                                fireproximityprompt(obj)
-                            end
-                        end
-                    end
-                end
-                task.wait(2) 
-            end
-
-            task.wait(1)
-            root.CFrame = CFrame.new(249, 153, -259)
-            isUnlocking = false
-        end)
-    end
-end)
-
+-- Inf Ammo & Fire Rate
 task.spawn(function()
     while task.wait(0.5) do
         if TOGGLES.InfAmmo then
@@ -595,9 +233,6 @@ task.spawn(function()
             end)
         end
     end
-end)
-createToggle(SelfTab, "Inf Ammo", false, function(state)
-    TOGGLES.InfAmmo = state
 end)
 
 task.spawn(function()
@@ -615,10 +250,8 @@ task.spawn(function()
         end)
     end
 end)
-createToggle(SelfTab, "Fire Rate", false, function(state)
-    TOGGLES.FireRate = state
-end)
 
+-- Inf Heal
 task.spawn(function()
     local mt = getrawmetatable(game)
     local old_namecall = mt.__namecall
@@ -642,7 +275,6 @@ task.spawn(function()
                 local backpack = LP:FindFirstChild("Backpack")
                 local bandage = char:FindFirstChild("Bandage") or (backpack and backpack:FindFirstChild("Bandage"))
                 local medkit = char:FindFirstChild("Medkit") or (backpack and backpack:FindFirstChild("Medkit"))
-                
                 if bandage then
                     pcall(function() bandage:Activate() end)
                     if _G.ToolProcessor then pcall(function() _G.ToolProcessor("Bandage", "Heal") end) end
@@ -654,29 +286,172 @@ task.spawn(function()
         end
     end
 end)
-createToggle(SelfTab, "Inf Heal", false, function(state)
-    TOGGLES.InfHeal = state
+
+-- ================== UI SETUP ==================
+
+-- FARM TAB
+local farmSection = window:Section("Farm")
+farmSection:Divider("Bring Objects")
+farmSection:Select("Bring Type", {"Pallet", "Scrap"}, "Pallet", function(val)
+    CONFIG.BringMode = val
+    current_idx = 1; placed_count = 0
+end)
+farmSection:Switch("Bring Objects", false, function(val)
+    TOGGLES.BringEnabled = val
+    if val then current_idx = 1; placed_count = 0 end
 end)
 
--- ================== TAB TELEPORT ==================
-createButton(TeleportTab, "Ghost Galleon", function()
-    local char = LP.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root then
-        root.CFrame = CFrame.new(4130, 359, -2165)
+farmSection:Divider("Auto Store")
+farmSection:Select("Store Type", {"Pallet", "Scrap"}, "Pallet", function(val)
+    CONFIG.StoreMode = val
+end)
+farmSection:Switch("Auto Store (Vét Sạch)", false, function(val)
+    TOGGLES.AutoStore = val
+end)
+
+farmSection:Divider("Auto Drop")
+farmSection:Switch("Auto Drop (Bán Đồ)", false, function(val)
+    TOGGLES.AutoDrop = val
+end)
+
+farmSection:Divider("Kill Aura")
+farmSection:Switch("Kill Aura (Cần Sniper)", false, function(val)
+    TOGGLES.KillAura = val
+end)
+
+-- COLLECT TAB
+local collectSection = window:Section("Collect")
+collectSection:Divider("Auto Rescue")
+
+collectSection:Button("Auto Rescue 1", function()
+    task.spawn(function()
+        local char = LP.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        
+        local orig_pos = root.CFrame
+        root.CFrame = CFrame.new(217, 236, -1822)
+        task.wait(1)
+        fireNearbyPrompts(1)
+        task.wait(0.5)
+        root.CFrame = orig_pos
+    end)
+end)
+
+collectSection:Button("Auto Rescue 2", function()
+    task.spawn(function()
+        local char = LP.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        
+        local orig_pos = root.CFrame
+        
+        root.CFrame = CFrame.new(392, 199, 3743)
+        task.wait(0.5) fireNearbyPrompts(6)
+        
+        root.CFrame = CFrame.new(340, 185, 3789)
+        task.wait(0.5) fireNearbyPrompts(4)
+        
+        root.CFrame = CFrame.new(279, 175, 3774)
+        task.wait(0.5) fireNearbyPrompts(7)
+        
+        root.CFrame = CFrame.new(271, 166, 3814)
+        task.wait(0.5) fireNearbyPrompts(1)
+        
+        task.wait(0.5)
+        root.CFrame = orig_pos
+    end)
+end)
+
+collectSection:Button("Auto Rescue 3", function()
+    task.spawn(function()
+        local char = LP.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        
+        local orig_pos = root.CFrame
+        
+        root.CFrame = CFrame.new(-1198, 193, 2287)
+        task.wait(0.5) fireNearbyPrompts(1)
+        
+        root.CFrame = CFrame.new(-1280, 156, 2400)
+        task.wait(0.5) fireNearbyPrompts(1)
+        
+        root.CFrame = CFrame.new(-1327, 158, 2247)
+        task.wait(0.5) fireNearbyPrompts(1)
+        
+        task.wait(6)
+        
+        root.CFrame = CFrame.new(-1256, 199, 2306)
+        task.wait(0.5) fireNearbyPrompts(1)
+        
+        task.wait(0.5)
+        root.CFrame = orig_pos
+    end)
+end)
+
+-- SELF TAB
+local selfSection = window:Section("Self")
+selfSection:Switch("Inf Ammo", false, function(val) TOGGLES.InfAmmo = val end)
+selfSection:Switch("Fire Rate", false, function(val) TOGGLES.FireRate = val end)
+selfSection:Switch("Inf Heal", false, function(val) TOGGLES.InfHeal = val end)
+selfSection:Switch("Auto Unlock Rigs", false, function(state)
+    if state then
+        task.spawn(function()
+            local char = LP.Character
+            if not char then return end
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+            
+            local positions = {
+                CFrame.new(-614, 172, 744),
+                CFrame.new(1746, 172, -553),
+                CFrame.new(-672, 172, -1424)
+            }
+            
+            for i, pos in ipairs(positions) do
+                root.CFrame = pos
+                task.wait(0.5) 
+                for _, obj in ipairs(workspace:GetDescendants()) do
+                    if obj:IsA("ProximityPrompt") and obj.Enabled then
+                        local part = obj.Parent
+                        if part and part:IsA("BasePart") then
+                            if (part.Position - pos.Position).Magnitude <= 20 then
+                                obj.HoldDuration = 0
+                                fireproximityprompt(obj)
+                            end
+                        end
+                    end
+                end
+                task.wait(2) 
+            end
+            task.wait(1)
+            root.CFrame = CFrame.new(249, 153, -259)
+        end)
     end
 end)
 
--- Nút ẩn/hiện thu nhỏ
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 20, 0, 20)
-closeBtn.Position = UDim2.new(1, -25, 0, 10)
-closeBtn.BackgroundColor3 = THEME.danger
-closeBtn.Text = "X"
-closeBtn.TextColor3 = THEME.text
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 12
-closeBtn.BorderSizePixel = 0
-closeBtn.Parent = main
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 4)
-closeBtn.MouseButton1Click:Connect(function() screen:Destroy() end)
+-- TELEPORT TAB
+local tpSection = window:Section("Teleport")
+tpSection:Button("Ghost Galleon", function()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then root.CFrame = CFrame.new(4130, 359, -2165) end
+end)
+tpSection:Button("Rig1", function()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then root.CFrame = CFrame.new(1047, 199, -972) end
+end)
+tpSection:Button("Rig2", function()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then root.CFrame = CFrame.new(1908, 226, 597) end
+end)
+tpSection:Button("Rig3", function()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then root.CFrame = CFrame.new(-1193, 295, -4199) end
+end)
+
+window:TempNotify("Loaded!", "Skibidi Hub đã sẵn sàng.", "rbxassetid://12608259004")
