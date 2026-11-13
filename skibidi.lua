@@ -1,5 +1,5 @@
 -- Credit: Skibidi Bucu Messi
--- AppleLibrary Build (Added Tween Around)
+-- AppleLibrary Build (Updated Rescue 3 Delay)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -506,7 +506,7 @@ collectSection:Button("Auto Rescue 3", function()
         root.CFrame = CFrame.new(-1327, 158, 2247)
         task.wait(0.5) fireNearbyPrompts(1)
         
-        task.wait(6)
+        task.wait(9) -- Đã tăng lên 9 giây
         
         root.CFrame = CFrame.new(-1256, 199, 2306)
         task.wait(0.5) fireNearbyPrompts(1)
