@@ -1,5 +1,5 @@
 -- Credit: Skibidi Bucu Messi
--- AppleLibrary Build (Updated Rescue 3 Delay)
+-- AppleLibrary Build (Updated Teleports & Rescues)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -72,7 +72,7 @@ local function getHiddenObject(keyword)
     return nil
 end
 
--- Hàm hỗ trợ bấm Prompt
+-- Hàm hỗ trợ
 local function fireNearbyPrompts(count)
     for i = 1, count do
         local char = LP.Character
@@ -82,7 +82,7 @@ local function fireNearbyPrompts(count)
                 if obj:IsA("ProximityPrompt") and obj.Enabled then
                     local part = obj.Parent
                     if part and part:IsA("BasePart") then
-                        if (part.Position - root.Position).Magnitude <= 20 then
+                        if (part.Position - root.Position).Magnitude <= 25 then
                             obj.HoldDuration = 0
                             fireproximityprompt(obj)
                         end
@@ -92,6 +92,15 @@ local function fireNearbyPrompts(count)
         end
         task.wait(0.5)
     end
+end
+
+local function doTeleportAndPrompt(pos, waitTime, promptCount)
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    root.CFrame = CFrame.new(pos)
+    task.wait(waitTime)
+    fireNearbyPrompts(promptCount)
 end
 
 -- ================== LOGIC ==================
@@ -466,8 +475,9 @@ collectSection:Button("Auto Rescue 1", function()
         local root = char and char:FindFirstChild("HumanoidRootPart")
         if not root then return end
         local orig_pos = root.CFrame
-        root.CFrame = CFrame.new(217, 236, -1822)
-        task.wait(1) fireNearbyPrompts(1)
+        
+        doTeleportAndPrompt(Vector3.new(1512, 236, -1285), 1, 2)
+        
         task.wait(0.5) root.CFrame = orig_pos
     end)
 end)
@@ -479,14 +489,10 @@ collectSection:Button("Auto Rescue 2", function()
         if not root then return end
         local orig_pos = root.CFrame
         
-        root.CFrame = CFrame.new(392, 199, 3743)
-        task.wait(0.5) fireNearbyPrompts(6)
-        root.CFrame = CFrame.new(340, 185, 3789)
-        task.wait(0.5) fireNearbyPrompts(4)
-        root.CFrame = CFrame.new(279, 175, 3774)
-        task.wait(0.5) fireNearbyPrompts(7)
-        root.CFrame = CFrame.new(271, 166, 3814)
-        task.wait(0.5) fireNearbyPrompts(1)
+        doTeleportAndPrompt(Vector3.new(-322, 199, 3725), 1, 3)
+        doTeleportAndPrompt(Vector3.new(-345, 185, 3658), 1, 9)
+        doTeleportAndPrompt(Vector3.new(-308, 175, 3608), 1, 12)
+        doTeleportAndPrompt(Vector3.new(-343, 167, 3584), 1, 2)
         
         task.wait(0.5) root.CFrame = orig_pos
     end)
@@ -497,22 +503,36 @@ collectSection:Button("Auto Rescue 3", function()
         local char = LP.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         if not root then return end
-        local orig_pos = root.CFrame
         
-        root.CFrame = CFrame.new(-1198, 193, 2287)
-        task.wait(0.5) fireNearbyPrompts(1)
-        root.CFrame = CFrame.new(-1280, 156, 2400)
-        task.wait(0.5) fireNearbyPrompts(1)
-        root.CFrame = CFrame.new(-1327, 158, 2247)
-        task.wait(0.5) fireNearbyPrompts(1)
+        doTeleportAndPrompt(Vector3.new(-2844, 158, -1131), 1, 1)
+        doTeleportAndPrompt(Vector3.new(-2952, 192, -1210), 1, 1)
+        doTeleportAndPrompt(Vector3.new(-2839, 157, -1290), 1, 1)
         
-        task.wait(9) -- Đã tăng lên 9 giây
+        task.wait(10) -- Đợi 10s
         
-        root.CFrame = CFrame.new(-1256, 199, 2306)
-        task.wait(0.5) fireNearbyPrompts(1)
+        doTeleportAndPrompt(Vector3.new(-2890, 199, -1210), 1, 2)
         
-        task.wait(0.5) root.CFrame = orig_pos
+        -- TP về Base
+        root.CFrame = CFrame.new(277, 162, -256)
     end)
+end)
+
+collectSection:Divider("Auto Stronghold")
+collectSection:Switch("Auto Stronghold", false, function(state)
+    if state then
+        task.spawn(function()
+            local char = LP.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+            local orig_pos = root.CFrame
+            
+            doTeleportAndPrompt(Vector3.new(-1018, 175, -321), 1.25, 1)
+            doTeleportAndPrompt(Vector3.new(-229, 168, 2101), 1.25, 1)
+            doTeleportAndPrompt(Vector3.new(3258, 198, -1965), 2, 1)
+            
+            task.wait(0.5) root.CFrame = orig_pos
+        end)
+    end
 end)
 
 -- SELF TAB
@@ -538,29 +558,13 @@ selfSection:Switch("Auto Unlock Rigs", false, function(state)
             if not char then return end
             local root = char:FindFirstChild("HumanoidRootPart")
             if not root then return end
-            local positions = {
-                CFrame.new(-614, 172, 744),
-                CFrame.new(1746, 172, -553),
-                CFrame.new(-672, 172, -1424)
-            }
-            for i, pos in ipairs(positions) do
-                root.CFrame = pos
-                task.wait(0.5) 
-                for _, obj in ipairs(workspace:GetDescendants()) do
-                    if obj:IsA("ProximityPrompt") and obj.Enabled then
-                        local part = obj.Parent
-                        if part and part:IsA("BasePart") then
-                            if (part.Position - pos.Position).Magnitude <= 20 then
-                                obj.HoldDuration = 0
-                                fireproximityprompt(obj)
-                            end
-                        end
-                    end
-                end
-                task.wait(2) 
-            end
-            task.wait(1)
-            root.CFrame = CFrame.new(249, 153, -259)
+            local orig_pos = root.CFrame
+            
+            doTeleportAndPrompt(Vector3.new(-331, 172, 566), 1.5, 1)
+            doTeleportAndPrompt(Vector3.new(1861, 172, 121), 1.5, 1)
+            doTeleportAndPrompt(Vector3.new(23, 172, -1436), 1.5, 1)
+            
+            task.wait(0.5) root.CFrame = orig_pos
         end)
     end
 end)
@@ -586,44 +590,20 @@ tpSection:Button("Base", function()
     if root then root.CFrame = CFrame.new(277, 162, -256) end
 end)
 
-tpSection:Button("Key 1", function()
-    local char = LP.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root then root.CFrame = CFrame.new(-1129, 178, -477) end
-end)
-
-tpSection:Button("Key 2", function()
-    local char = LP.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root then root.CFrame = CFrame.new(278, 170, 2202) end
-end)
-
-tpSection:Button("Key 3", function()
-    local char = LP.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root then root.CFrame = CFrame.new(3559, 201, -791) end
-end)
-
-tpSection:Button("StrongHold", function()
-    local char = LP.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root then root.CFrame = CFrame.new(3074, 259, 657) end
-end)
-
 tpSection:Button("Rig1", function()
     local char = LP.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root then root.CFrame = CFrame.new(1047, 199, -972) end
+    if root then root.CFrame = CFrame.new(-680, 179, -1225) end
 end)
 tpSection:Button("Rig2", function()
     local char = LP.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root then root.CFrame = CFrame.new(1908, 226, 597) end
+    if root then root.CFrame = CFrame.new(2177, 206, -572) end
 end)
 tpSection:Button("Rig3", function()
     local char = LP.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root then root.CFrame = CFrame.new(-1193, 295, -4199) end
+    if root then root.CFrame = CFrame.new(3428, 234, -3094) end
 end)
 
 window:TempNotify("Loaded!", "Skibidi Hub đã sẵn sàng.", "rbxassetid://12608259004")
