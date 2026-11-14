@@ -1,5 +1,5 @@
 -- Credit: Skibidi Bucu Messi
--- AppleLibrary Build (Updated Teleports & Rescues)
+-- AppleLibrary Build (Updated TP Buttons)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -575,7 +575,13 @@ local tpSection = window:Section("Teleport")
 tpSection:Button("Ghost Galleon", function()
     local char = LP.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root then root.CFrame = CFrame.new(4130, 359, -2165) end
+    if root then root.CFrame = CFrame.new(-796, 324, -3907) end
+end)
+
+tpSection:Button("Stronghold", function()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then root.CFrame = CFrame.new(3410, 258, -491) end
 end)
 
 tpSection:Button("CargoShip", function()
